@@ -1,7 +1,8 @@
 # VanishCam
 
-VanishCam adds animated disappearance effects to a live webcam feed. Video is
-processed on your computer; the webcam feed is not recorded or uploaded.
+VanishCam adds animated disappearance effects to a live webcam feed. Webcam
+frames are processed on your computer and are not recorded or uploaded by this
+app. Packaged builds also check licenses online; see [Privacy and network use](#privacy-and-network-use).
 
 ## Requirements
 
@@ -142,3 +143,42 @@ The generated files are placed in `dist\`.
 - **Virtual camera unavailable:** Install the OBS Virtual Camera driver and
   make sure another app is not already using its output.
 - **Video is slow:** Try a smaller resolution, such as `--width 640 --height 360`.
+
+## Privacy and network use
+
+The effects process the live camera feed locally. VanishCam does not send
+webcam frames or captured backgrounds to its license service. The Python source
+run directly with Python does not require an online license check. Packaged
+Windows editions use Firebase for license activation and session checks; these
+checks send the license email, an anonymous account identifier, a hashed device
+identifier, and session information. Package installation may also contact
+package repositories to download dependencies. Other camera, streaming, or
+video-call software has its own data practices.
+
+## Security
+
+Please do not include passwords, license data, device identifiers, or other
+private information in a public issue. Report security problems through GitHub's
+private vulnerability reporting feature for this repository when it is
+available. If it is unavailable, contact the repository maintainer privately
+before sharing technical details publicly. Include the affected version and
+steps to reproduce the issue; avoid attaching personal webcam footage.
+
+Do not commit Firebase service-account files, private keys, `.env` files, or
+other credentials. The Firebase client configuration included for the packaged
+app is client-side configuration, not an administrator credential; server-side
+access must be protected by Firebase security rules.
+
+## License and third-party components
+
+Unless a file says otherwise, VanishCam's original source code is available
+under the [GNU General Public License v3.0](LICENSE) (GPL-3.0-only). You may
+use, modify, and redistribute covered code under that license's terms. If you
+redistribute a covered version, the GPL requires you to provide corresponding
+source under GPL-3.0 and preserve the required notices. Read the complete
+[`LICENSE`](LICENSE) before redistributing the project.
+
+The GPL notice does not grant rights to third-party software, models, images,
+character names, logos, or trademarks. Dependencies, MediaPipe models, and
+assets may have separate terms; check their original sources and licenses
+before redistributing them. OBS Virtual Camera is a separate project.
