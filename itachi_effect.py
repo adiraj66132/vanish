@@ -135,13 +135,13 @@ def load_crow_sprites() -> tuple[np.ndarray, ...]:
     """Extract the five separate alpha components from the original sheet."""
     sheet = cv2.imread(str(CROW_SHEET_PATH), cv2.IMREAD_UNCHANGED)
     if sheet is None or sheet.ndim != 3 or sheet.shape[2] != 4:
-        raise RuntimeError(f"Sprite dei corvi non disponibile: {CROW_SHEET_PATH}")
+        raise RuntimeError(f"Crow sprite sheet not found: {CROW_SHEET_PATH}")
     count, labels, stats, _ = cv2.connectedComponentsWithStats(
         (sheet[:, :, 3] > 30).astype(np.uint8), 8)
     birds = sorted((index for index in range(1, count) if stats[index, cv2.CC_STAT_AREA] > 5000),
                    key=lambda index: stats[index, cv2.CC_STAT_LEFT])
     if len(birds) != 5:
-        raise RuntimeError("Lo sprite sheet dei corvi deve contenere cinque pose separate.")
+        raise RuntimeError("The crow sprite sheet must contain five separate poses.")
     sprites = []
     for index in birds:
         x, y, width, height, _ = (int(value) for value in stats[index])
@@ -167,7 +167,7 @@ def load_sharingan_art() -> np.ndarray:
     """Matte the supplied black-backed eyes without losing dark pupils."""
     image = cv2.imread(str(SHARINGAN_PATH), cv2.IMREAD_COLOR)
     if image is None or image.shape[0] < 700 or image.shape[1] < 1000:
-        raise RuntimeError(f"Immagine Sharingan non disponibile: {SHARINGAN_PATH}")
+        raise RuntimeError(f"Sharingan image not found: {SHARINGAN_PATH}")
     crop = image[175:850].copy()
     height, width = crop.shape[:2]
     glow = np.zeros((height, width), np.uint8)
@@ -226,7 +226,7 @@ class ItachiCrowEffect:
         rng = np.random.default_rng(seed)
         person = _largest_person(mask)
         if person is None:
-            raise ValueError("Sagoma della persona non disponibile")
+            raise ValueError("Person silhouette is unavailable")
         binary, (left, top, body_width, body_height) = person
         self.bounds = (left, top, body_width, body_height)
         interior = cv2.erode(binary, np.ones((7, 7), np.uint8))
@@ -500,7 +500,7 @@ class ItachiCrowEffect:
 
     def render(self, background: np.ndarray, age: float, appearing: bool = False) -> np.ndarray:
         if background.shape != self.source.shape:
-            raise ValueError("Sfondo e fotogramma devono avere la stessa dimensione")
+            raise ValueError("The background and frame must have the same dimensions")
         if age >= EFFECT_SECONDS:
             return self.source.copy() if appearing else self._blood_background(background, EFFECT_SECONDS)
         timeline = EFFECT_SECONDS - max(0.0, age) if appearing else max(0.0, age)

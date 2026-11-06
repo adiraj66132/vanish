@@ -35,14 +35,14 @@ class LicenseError(RuntimeError):
 class ServiceError(LicenseError):
     def __init__(self, code: str, retryable: bool = False):
         self.code, self.retryable = code, retryable
-        super().__init__("Connessione licenze non disponibile. Controlla Internet e riprova."
-                         if retryable else "Verifica licenza rifiutata. Controlla email, attivazione e dispositivo.")
+        super().__init__("License service unavailable. Check your internet connection and try again."
+                         if retryable else "License check denied. Check the email, activation status and device.")
 
 
 def normalize_email(value: str) -> str:
     value = value.strip().lower()
     if len(value) > 254 or not re.fullmatch(r"[a-z0-9.!#$%&'*+\-=?^_`{|}~]+@[a-z0-9-]+(?:\.[a-z0-9-]+)+", value):
-        raise LicenseError("Inserisci un indirizzo email valido.")
+        raise LicenseError("Enter a valid email address.")
     return value
 
 
@@ -57,7 +57,7 @@ def load_config(path: Path = CONFIG_PATH) -> dict:
             raise ValueError()
         return config
     except (OSError, ValueError, KeyError, TypeError):
-        raise LicenseError("Configurazione licenze mancante o non valida. Scarica la versione completa dell'app.") from None
+        raise LicenseError("License configuration is missing or invalid. Download the full app release.") from None
 
 
 def _json_request(url: str, data=None, *, token=None, method=None, form=False):
@@ -86,7 +86,7 @@ def _json_request(url: str, data=None, *, token=None, method=None, form=False):
 
 def _dpapi(data: bytes, decrypt=False) -> bytes:
     if os.name != "nt":
-        raise LicenseError("Questa edizione e' destinata a Windows.")
+        raise LicenseError("This edition is intended for Windows.")
     from ctypes import wintypes
 
     class Blob(ctypes.Structure):
@@ -104,7 +104,7 @@ def _dpapi(data: bytes, decrypt=False) -> bytes:
                          ctypes.c_void_p, ctypes.c_void_p, wintypes.DWORD, ctypes.POINTER(Blob)]
     function.restype = wintypes.BOOL
     if not function(ctypes.byref(source), None, None, None, None, 1, ctypes.byref(output)):
-        raise LicenseError("Impossibile leggere le credenziali su questo PC. Contatta il titolare per il ripristino dispositivo.")
+        raise LicenseError("Could not read credentials on this PC. Contact the app owner to reset the device binding.")
     try:
         return ctypes.string_at(output.data, output.size)
     finally:
@@ -122,7 +122,7 @@ class ProtectedStore:
         try:
             return json.loads(_dpapi(self.path.read_bytes(), decrypt=True))
         except (ValueError, OSError):
-            raise LicenseError("Dati licenza locali danneggiati. Richiedi il ripristino del dispositivo.") from None
+            raise LicenseError("Local license data is damaged. Request a device reset.") from None
 
     def save(self, data: dict):
         self.directory.mkdir(parents=True, exist_ok=True)
@@ -146,14 +146,14 @@ def device_id() -> str:
             raise ValueError()
         return hashlib.sha256(("VanishCam/license-device/v1/" + machine).encode()).hexdigest()
     except (OSError, ValueError, ImportError):
-        raise LicenseError("Identificazione del dispositivo non riuscita. Riavvia l'app su un PC Windows.") from None
+        raise LicenseError("Device identification failed. Restart the app on a Windows PC.") from None
 
 
 class LocalInstance:
     """All EXE editions share a per-user Windows mutex, before reading tokens."""
     def __init__(self, identity_path: Path):
         if os.name != "nt":
-            raise LicenseError("Questa edizione richiede Windows.")
+            raise LicenseError("This edition requires Windows.")
         self.kernel = ctypes.WinDLL("kernel32", use_last_error=True)
         self.kernel.CreateMutexW.argtypes = [ctypes.c_void_p, ctypes.c_bool, ctypes.c_wchar_p]
         self.kernel.CreateMutexW.restype = ctypes.c_void_p
@@ -162,10 +162,10 @@ class LocalInstance:
         self.handle = self.kernel.CreateMutexW(None, False, name)
         error = ctypes.get_last_error()
         if not self.handle:
-            raise LicenseError("Impossibile bloccare la sessione locale.")
+            raise LicenseError("Could not lock the local session.")
         if error == 183:
             self.close()
-            raise LicenseError("Un'altra versione di VanishCam e' gia' aperta su questo PC. Chiudila prima di continuare.")
+            raise LicenseError("Another VanishCam edition is already open on this PC. Close it before continuing.")
 
     def close(self):
         if self.handle:
@@ -252,11 +252,11 @@ class FirestoreLicense:
             try:
                 license_doc = self._document("licenses")
                 if _value(license_doc, "active") is not True:
-                    raise LicenseError("Licenza non attiva per questa email. Contatta il titolare dell'app.")
+                    raise LicenseError("There is no active license for this email. Contact the app owner.")
                 binding = self._document("licenseBindings")
                 if binding and (_value(binding, "uid") != self.auth.state["uid"]
                                 or _value(binding, "deviceId") != self.fingerprint):
-                    raise LicenseError("Questa licenza e' associata a un altro PC. Richiedi al titolare il cambio dispositivo.")
+                    raise LicenseError("This license is bound to another PC. Ask the app owner to transfer it.")
                 # REST third-party tokens cannot open read/write transactions.
                 # Use one atomic commit with optimistic preconditions instead.
                 # Rules recheck activation, binding and lease at commit time.
@@ -279,9 +279,9 @@ class FirestoreLicense:
                 if error.code in ("ABORTED", "FAILED_PRECONDITION", "ALREADY_EXISTS") and attempt < 2:
                     continue
                 if error.code == "PERMISSION_DENIED":
-                    raise LicenseError("Licenza gia' in uso o non disponibile. Chiudi l'altra app; dopo un arresto anomalo attendi 2 minuti.") from None
+                    raise LicenseError("License already in use or unavailable. Close the other app; after a crash, wait 2 minutes.") from None
                 raise
-        raise LicenseError("Impossibile acquisire la licenza. Riprova.")
+        raise LicenseError("Could not acquire the license. Try again.")
 
     def renew(self):
         write = self._session_write()
@@ -313,7 +313,7 @@ class LicenseSession:
         delay = RENEW_SECONDS
         while not self.stop_event.wait(delay):
             if time.monotonic() >= self.deadline:
-                self.error = "Verifica licenza scaduta. Riconnetti Internet e riavvia l'app."
+                self.error = "License check expired. Reconnect to the internet and restart the app."
                 return
             try:
                 deadline = self.backend.renew()
@@ -321,24 +321,24 @@ class LicenseSession:
                     return
                 # Never resume after the previous lease expired locally.
                 if time.monotonic() >= self.deadline:
-                    self.error = "Sessione licenza scaduta. Riavvia l'app."
+                    self.error = "License session expired. Restart the app."
                     return
                 self.deadline = deadline
                 delay = RENEW_SECONDS
             except ServiceError as error:
                 if not error.retryable:
-                    self.error = "Licenza disattivata, sessione revocata o dispositivo non autorizzato."
+                    self.error = "License deactivated, session revoked, or device unauthorized."
                     return
                 delay = 8
             except Exception:
-                self.error = "Verifica licenza interrotta. Riavvia l'app."
+                self.error = "License check interrupted. Restart the app."
                 return
 
     def ensure_valid(self):
         if self.error:
             raise LicenseError(self.error)
         if time.monotonic() >= self.deadline:
-            raise LicenseError("Verifica online scaduta. Riconnetti Internet e riavvia l'app.")
+            raise LicenseError("Online license check expired. Reconnect to the internet and restart the app.")
 
     def close(self):
         if self.stop_event.is_set():
@@ -367,12 +367,12 @@ def _email_dialog(auth: DeviceAuth, config: dict, fingerprint: str):
     from tkinter import ttk
 
     root = tk.Tk()
-    root.title("VanishCam - Attiva licenza")
+    root.title("VanishCam - Activate License")
     root.resizable(False, False)
     panel = ttk.Frame(root, padding=26)
     panel.pack()
-    ttk.Label(panel, text="Attiva VanishCam", font=("Segoe UI", 18, "bold")).pack(anchor="w")
-    ttk.Label(panel, text="Inserisci l'email associata alla tua licenza.\nLa licenza viene associata a questo PC.",
+    ttk.Label(panel, text="Activate VanishCam", font=("Segoe UI", 18, "bold")).pack(anchor="w")
+    ttk.Label(panel, text="Enter the email address associated with your license.\nThe license will be bound to this PC.",
               padding=(0, 10, 0, 15)).pack(anchor="w")
     email = tk.StringVar(value=auth.state.get("email", ""))
     entry = ttk.Entry(panel, textvariable=email, width=48)
@@ -395,7 +395,7 @@ def _email_dialog(auth: DeviceAuth, config: dict, fingerprint: str):
         pending = True
         entry.configure(state="disabled")
         button.configure(state="disabled")
-        status.set("Verifica della licenza in corso...")
+        status.set("Checking license...")
 
         def work():
             backend = FirestoreLicense(config, auth, address, fingerprint)
@@ -417,7 +417,7 @@ def _email_dialog(auth: DeviceAuth, config: dict, fingerprint: str):
             return
         pending = False
         if error:
-            status.set(str(error) if isinstance(error, LicenseError) else "Verifica non riuscita. Riprova.")
+            status.set(str(error) if isinstance(error, LicenseError) else "Check failed. Try again.")
             button.configure(state="normal")
             entry.configure(state="normal")
             root.after(80, poll)
@@ -429,11 +429,11 @@ def _email_dialog(auth: DeviceAuth, config: dict, fingerprint: str):
         # A successful in-flight acquisition must not leave a live session
         # behind a dismissed activation window. Wait for the bounded request.
         if pending:
-            status.set("Attendi il completamento della verifica, poi chiudi la finestra.")
+            status.set("Wait for the check to finish, then close the window.")
         else:
             root.destroy()
 
-    button = ttk.Button(panel, text="Attiva e avvia", command=activate)
+    button = ttk.Button(panel, text="Activate and Start", command=activate)
     button.pack(fill="x")
     root.protocol("WM_DELETE_WINDOW", cancel)
     root.bind("<Return>", lambda event: activate())
@@ -480,6 +480,6 @@ def show_license_error(message):
     root = tk.Tk()
     root.withdraw()
     try:
-        messagebox.showerror("VanishCam - Licenza", str(message), parent=root)
+        messagebox.showerror("VanishCam - License", str(message), parent=root)
     finally:
         root.destroy()

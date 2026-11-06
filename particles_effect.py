@@ -66,7 +66,7 @@ class ParticleEffect:
 
     def render(self, background: np.ndarray, age: float) -> np.ndarray:
         if background.shape[:2] != self.frame_size:
-            raise ValueError("Lo sfondo deve avere la dimensione del fotogramma acquisito")
+            raise ValueError("The background must match the size of the captured frame")
         output = background.copy()
         if self.bounds is None or age >= PARTICLE_SECONDS:
             return output

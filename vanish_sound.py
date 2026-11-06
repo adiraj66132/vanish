@@ -15,7 +15,7 @@ TELEPORT_SOUND_PATH = Path(__file__).resolve().parent / "assets" / "teleport.MP3
 class VanishSound:
     def __init__(self, path: Path = SOUND_PATH):
         if not path.is_file():
-            raise RuntimeError(f"Audio di sparizione non trovato: {path}")
+            raise RuntimeError(f"Vanish sound not found: {path}")
         self.path = path
 
         os.environ.setdefault("PYGAME_HIDE_SUPPORT_PROMPT", "1")
@@ -26,7 +26,7 @@ class VanishSound:
         except ImportError:
             self.ffplay = shutil.which("ffplay")
             if self.ffplay is None:
-                raise RuntimeError(f"Per riprodurre {path.name} installa pygame o ffplay.")
+                raise RuntimeError(f"Install pygame or ffplay to play {path.name}.")
             return
 
         self.mixer = mixer
@@ -38,7 +38,7 @@ class VanishSound:
         except Exception as error:
             if self.owns_mixer:
                 mixer.quit()
-            raise RuntimeError(f"Impossibile aprire l'audio di sparizione: {error}") from error
+            raise RuntimeError(f"Could not open the vanish sound: {error}") from error
 
     def play(self) -> None:
         if self.ffplay is not None:
@@ -53,11 +53,11 @@ class VanishSound:
                     creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
                 )
             except OSError as error:
-                raise RuntimeError(f"Impossibile avviare l'audio di sparizione: {error}") from error
+                raise RuntimeError(f"Could not play the vanish sound: {error}") from error
             return
         self.sound.stop()
         if self.sound.play() is None:
-            raise RuntimeError("Impossibile avviare l'audio di sparizione: nessun canale libero.")
+            raise RuntimeError("Could not play the vanish sound: no audio channel is available.")
 
     def stop(self) -> None:
         if self.ffplay is not None:
