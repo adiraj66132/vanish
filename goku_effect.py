@@ -79,7 +79,7 @@ class GokuGestureGate:
 
     def __post_init__(self):
         if not math.isfinite(self.hold_seconds) or self.hold_seconds <= 0:
-            raise ValueError('Il tempo di mantenimento deve essere positivo e finito.')
+            raise ValueError('The hold duration must be positive and finite.')
 
     def update(self, pose: bool, now: float) -> bool:
         if not pose:

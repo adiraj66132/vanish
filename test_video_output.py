@@ -117,7 +117,7 @@ class MenuTests(unittest.TestCase):
                 edition_file.write_text(edition, encoding="utf-8")
                 self.assertEqual(app.edition_modes(edition_file), expected)
             edition_file.write_text("unknown", encoding="utf-8")
-            with self.assertRaisesRegex(RuntimeError, "Edizione non riconosciuta"):
+            with self.assertRaisesRegex(RuntimeError, "Unrecognized edition"):
                 app.edition_modes(edition_file)
 
     def test_single_mode_edition_starts_without_a_menu(self):
@@ -207,7 +207,7 @@ class VideoLoopTests(unittest.TestCase):
             camera.close.assert_called_once()
             destroy.assert_called_once()
             if mode == "particles":
-                segment.assert_called_once()  # Una sola acquisizione della sagoma.
+                segment.assert_called_once()  # The silhouette is captured only once.
         return frames, camera, displayed
 
     def test_preview_and_virtual_output_are_clean_in_all_phases(self):
@@ -215,23 +215,23 @@ class VideoLoopTests(unittest.TestCase):
         self.assertEqual(len(displayed), 5)
         for sent, preview in zip(camera.send.call_args_list, displayed):
             np.testing.assert_array_equal(sent.args[0], preview)
-        np.testing.assert_array_equal(displayed[0], frames[0])  # Calibrazione.
-        np.testing.assert_array_equal(displayed[2], frames[2])  # Pronto.
-        np.testing.assert_array_equal(displayed[4], frames[1])  # Sparito: solo sfondo.
+        np.testing.assert_array_equal(displayed[0], frames[0])  # Calibration.
+        np.testing.assert_array_equal(displayed[2], frames[2])  # Ready.
+        np.testing.assert_array_equal(displayed[4], frames[1])  # Vanished: background only.
 
     def test_first_gesture_starts_dissolve_in_preview_and_virtual_output(self):
         frames, camera, displayed = self.run_mock_video(gesture=("Victory", 0.9))
         np.testing.assert_array_equal(camera.send.call_args_list[2].args[0], displayed[2])
-        self.assertTrue(np.any(displayed[3] != frames[3]))  # Animazione in corso.
-        self.assertTrue(np.any(displayed[3] != frames[1]))  # Non ancora sparito.
-        np.testing.assert_array_equal(displayed[4], frames[1])  # Animazione completata.
+        self.assertTrue(np.any(displayed[3] != frames[3]))  # Animation in progress.
+        self.assertTrue(np.any(displayed[3] != frames[1]))  # Not vanished yet.
+        np.testing.assert_array_equal(displayed[4], frames[1])  # Animation complete.
 
     def test_particles_use_same_v_gesture_and_virtual_output(self):
         frames, camera, displayed = self.run_mock_video(
             gesture=("Victory", 0.9), mode="particles",
         )
-        self.assertTrue(np.any(displayed[2] != frames[2]))  # Parte subito.
-        self.assertTrue(np.any(displayed[3] != frames[3]))  # Corpo si dissolve.
+        self.assertTrue(np.any(displayed[2] != frames[2]))  # Starts immediately.
+        self.assertTrue(np.any(displayed[3] != frames[3]))  # Body dissolves.
         np.testing.assert_array_equal(displayed[4], frames[1])
         for sent, preview in zip(camera.send.call_args_list, displayed):
             np.testing.assert_array_equal(sent.args[0], preview)
@@ -294,10 +294,10 @@ class VideoLoopTests(unittest.TestCase):
         countdown = [call.args[0] for call in printed.call_args_list
                      if call.args and call.args[0].startswith("[Goku] ")]
         self.assertEqual(countdown, [
-            "[Goku] Sparizione tra 1...",
-            "[Goku] Sparizione!",
-            "[Goku] Riapparizione tra 1...",
-            "[Goku] Riapparizione!",
+            "[Goku] Disappearing in 1...",
+            "[Goku] Disappearing!",
+            "[Goku] Reappearing in 1...",
+            "[Goku] Reappearing!",
         ])
         np.testing.assert_array_equal(displayed[2], frames[2])
         np.testing.assert_array_equal(displayed[14], frames[1])

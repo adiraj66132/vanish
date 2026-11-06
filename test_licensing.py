@@ -12,7 +12,7 @@ from local_app import vanish_cam as app
 
 class ClientTests(unittest.TestCase):
     def test_email_normalizes_and_rejects_invalid_document_paths(self):
-        self.assertEqual(licensing.normalize_email('  Cliente+demo@Example.COM  '), 'cliente+demo@example.com')
+        self.assertEqual(licensing.normalize_email('  Customer+demo@Example.COM  '), 'customer+demo@example.com')
         for value in ('', 'not-email', 'a/b@example.com', 'a@example.com/xx', 'a@x', 'a\n@x.com'):
             with self.assertRaises(licensing.LicenseError):
                 licensing.normalize_email(value)
@@ -21,12 +21,12 @@ class ClientTests(unittest.TestCase):
     def test_credentials_are_dpapi_protected_and_roundtrip_without_plaintext(self):
         with TemporaryDirectory() as directory:
             store = licensing.ProtectedStore('demo', Path(directory))
-            state = {'email':'cliente@example.com','refreshToken':'test-token-not-real','uid':'pc-a'}
+            state = {'email':'customer@example.com','refreshToken':'test-token-not-real','uid':'pc-a'}
             self.assertEqual(store.read(), {})
             store.save(state)
             self.assertEqual(store.read(), state)
             self.assertNotIn(b'test-token-not-real', store.path.read_bytes())
-            self.assertNotIn(b'cliente@example.com', store.path.read_bytes())
+            self.assertNotIn(b'customer@example.com', store.path.read_bytes())
 
     @unittest.skipUnless(os.name == 'nt', 'Windows device')
     def test_hardware_identity_is_stable_and_hashed(self):
@@ -68,13 +68,13 @@ class ClientTests(unittest.TestCase):
     def backend(self):
         auth = Mock(state={'uid':'pc-a'})
         auth.id_token.return_value = 'token'
-        return licensing.FirestoreLicense({'projectId':'demo'}, auth, 'cliente@example.com', 'a'*64)
+        return licensing.FirestoreLicense({'projectId':'demo'}, auth, 'customer@example.com', 'a'*64)
 
     def test_inactive_license_never_writes_a_binding(self):
         backend = self.backend()
         backend._request = Mock(return_value={'transaction':'tx'})
         backend._document = Mock(return_value={'fields':{'active':{'booleanValue':False}}})
-        with self.assertRaisesRegex(licensing.LicenseError, 'non attiva'):
+        with self.assertRaisesRegex(licensing.LicenseError, 'no active license'):
             backend.acquire()
         self.assertFalse(any(c.args[0] == ':commit' for c in backend._request.call_args_list))
 
@@ -112,8 +112,8 @@ class ClientTests(unittest.TestCase):
         with patch.object(licensing.time, 'monotonic', return_value=21):
             with self.assertRaises(licensing.LicenseError):
                 session.ensure_valid()
-        session.error = 'Licenza disattivata'
-        with self.assertRaisesRegex(licensing.LicenseError, 'disattivata'):
+        session.error = 'License deactivated'
+        with self.assertRaisesRegex(licensing.LicenseError, 'deactivated'):
             session.ensure_valid()
 
     def test_permanent_heartbeat_failure_stops_the_session(self):
