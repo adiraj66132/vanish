@@ -6,8 +6,8 @@ from types import SimpleNamespace
 import unittest
 from unittest.mock import MagicMock, Mock, patch
 
-from local_app import license_client as licensing
-from local_app import vanish_cam as app
+import license_client as licensing
+import vanish_cam as app
 
 
 class ClientTests(unittest.TestCase):
@@ -93,7 +93,7 @@ class ClientTests(unittest.TestCase):
         backend._request = Mock(return_value={'transaction':'tx'})
         backend._document = Mock(side_effect=[{'fields':{'active':{'booleanValue':True}}},
             {'fields':{'uid':{'stringValue':'pc-b'},'deviceId':{'stringValue':'b'*64}}}])
-        with self.assertRaisesRegex(licensing.LicenseError, 'altro PC'):
+        with self.assertRaisesRegex(licensing.LicenseError, 'bound to another PC'):
             backend.acquire()
         self.assertFalse(any(c.args[0] == ':commit' for c in backend._request.call_args_list))
 
@@ -144,6 +144,7 @@ class EntryPointTests(unittest.TestCase):
             session = MagicMock()
             with patch.object(app.sys, 'argv', ['vanish_cam.py','--mode',mode]), \
                  patch.object(app.sys, 'frozen', True, create=True), \
+                 patch.object(app.platform, 'system', return_value='Windows'), \
                  patch.object(app, 'activate_license', return_value=session) as activation, \
                  patch.object(app, 'run', return_value=0) as run:
                 self.assertEqual(app.main(), 0)
@@ -153,6 +154,17 @@ class EntryPointTests(unittest.TestCase):
     def test_local_python_runs_without_online_license(self):
         with patch.object(app.sys, 'argv', ['vanish_cam.py','--mode','itachi']), \
              patch.object(app.sys, 'frozen', False, create=True), \
+             patch.object(app, 'activate_license') as activation, \
+             patch.object(app, 'run', return_value=0) as run, \
+             patch('builtins.print'):
+            self.assertEqual(app.main(), 0)
+        activation.assert_not_called()
+        run.assert_called_once_with()
+
+    def test_non_windows_packaged_runs_without_online_license(self):
+        with patch.object(app.sys, 'argv', ['vanish_cam.py','--mode','naruto']), \
+             patch.object(app.sys, 'frozen', True, create=True), \
+             patch.object(app.platform, 'system', return_value='Linux'), \
              patch.object(app, 'activate_license') as activation, \
              patch.object(app, 'run', return_value=0) as run, \
              patch('builtins.print'):
@@ -174,12 +186,14 @@ class EntryPointTests(unittest.TestCase):
     def test_license_denied_or_cancelled_cannot_open_camera(self):
         with patch.object(app.sys, 'argv', ['vanish_cam.py']), \
              patch.object(app.sys, 'frozen', True, create=True), \
+             patch.object(app.platform, 'system', return_value='Windows'), \
              patch.object(app, 'activate_license', return_value=None), \
              patch.object(app, 'run') as run:
             self.assertEqual(app.main(), 0)
         run.assert_not_called()
         with patch.object(app.sys, 'argv', ['vanish_cam.py']), \
              patch.object(app.sys, 'frozen', True, create=True), \
+             patch.object(app.platform, 'system', return_value='Windows'), \
              patch.object(app, 'activate_license', side_effect=licensing.LicenseError('Revocata')), \
              patch.object(app, 'show_license_error'), patch.object(app,'run') as run:
             self.assertEqual(app.main(), 1)

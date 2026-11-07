@@ -5,8 +5,8 @@ from unittest.mock import Mock,patch
 
 import numpy as np
 
-from local_app import goku_settings as settings
-from local_app import vanish_cam as app
+import goku_settings as settings
+import vanish_cam as app
 
 
 class SettingsTests(unittest.TestCase):

@@ -6,12 +6,12 @@ from unittest.mock import patch
 import cv2
 import numpy as np
 
-from local_app.itachi_effect import (
+from itachi_effect import (
     BODY_RELEASE_SECONDS, EFFECT_SECONDS, ItachiCrowEffect,
     ItachiGestureGate, ItachiPoseRecognizer, hands_touch_at_chest,
     load_sharingan_art,
 )
-from local_app import vanish_cam as app
+import vanish_cam as app
 
 
 def hand(x, y=.47):

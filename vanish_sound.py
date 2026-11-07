@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import importlib.util
 import os
 import shutil
 import subprocess
@@ -24,9 +25,14 @@ class VanishSound:
         try:
             from pygame import mixer
         except ImportError:
+            mixer = None
+        # pygame's wheels sometimes omit the compiled mixer module (e.g. some
+        # Python 3.14 builds), leaving a MissingModule stub that only explodes
+        # on use. Detect that and fall back to ffplay.
+        if mixer is None or importlib.util.find_spec("pygame.mixer") is None:
             self.ffplay = shutil.which("ffplay")
             if self.ffplay is None:
-                raise RuntimeError(f"Install pygame or ffplay to play {path.name}.")
+                raise RuntimeError(f"Install pygame with audio support or ffplay to play {path.name}.")
             return
 
         self.mixer = mixer

@@ -1,6 +1,6 @@
 @echo off
 setlocal
-cd /d "%~dp0\.."
+cd /d "%~dp0"
 
 set "VENV_DIR=.venv-local"
 set "VENV_PY=%VENV_DIR%\Scripts\python.exe"
@@ -21,17 +21,17 @@ if errorlevel 1 (
   echo [Vanish Lab] Installing required packages. Internet is only needed this time...
   "%VENV_PY%" -m pip install --upgrade pip
   if errorlevel 1 goto :error
-  "%VENV_PY%" -m pip install -r "local_app\requirements.txt"
+  "%VENV_PY%" -m pip install -r requirements.txt
   if errorlevel 1 goto :error
 )
 
 echo [Vanish Lab] Starting the webcam...
-"%VENV_PY%" "local_app\vanish_cam.py" %*
+"%VENV_PY%" vanish_cam.py %*
 if errorlevel 1 goto :error
 exit /b 0
 
 :error
 echo.
-echo Could not start Vanish Lab. See local_app\README.md for common fixes.
+echo Could not start VanishCam. See README.md for common fixes.
 pause
 exit /b 1

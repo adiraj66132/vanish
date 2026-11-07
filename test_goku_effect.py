@@ -4,7 +4,7 @@ from types import SimpleNamespace
 import numpy as np
 import mediapipe as mp
 
-from local_app.goku_effect import (
+from goku_effect import (
     GokuGestureGate, GokuPoseRecognizer, GokuTeleport, HOLD_SECONDS, TELEPORT_SECONDS,
     fingers_on_forehead,
 )

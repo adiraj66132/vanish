@@ -3,6 +3,8 @@ __pycache__/
 .pytest_cache/
 .venv/
 .venv-local/
+.venv-build/
+.venv-local/
 /models/*
 !/models/blaze_face_short_range.tflite
 *.part
