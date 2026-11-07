@@ -1,12 +1,14 @@
-"""Build the complete VanishCam and three focused Windows editions."""
+"""Build the complete VanishCam and three focused editions (Windows EXEs; Linux/macOS binaries)."""
 
 from pathlib import Path
+import platform
 
 from PyInstaller.utils.hooks import collect_dynamic_libs
 
 
 root = Path(SPECPATH).resolve()
-icon_file = root / "assets" / "vanish_icon.ico"
+is_windows = platform.system() == "Windows"
+icon_file = root / "assets" / "vanish_icon.ico" if is_windows else None
 segmenter = (root / "models" / "selfie_segmenter_landscape.tflite", "models")
 license_config = (root / "license_config.json", ".")
 editions = (
@@ -49,7 +51,7 @@ all_resources = [
     path for edition, _, extras in editions
     for path, _ in (segmenter, *extras, (root / "editions" / edition / "edition.txt", "."))
 ]
-missing = [str(path) for path in (icon_file, license_config[0], *all_resources) if not path.is_file()]
+missing = [str(path) for path in (icon_file, license_config[0], *all_resources) if path is not None and not path.is_file()]
 if missing:
     raise SystemExit("File necessari alla build mancanti:\n" + "\n".join(missing))
 
@@ -82,5 +84,5 @@ for edition, name, extras in editions:
         strip=False,
         upx=False,
         console=True,
-        icon=str(icon_file),
+        icon=icon_file,
     ))

@@ -19,6 +19,22 @@ def hand_landmarks_from_result(result, width: int, height: int) -> list[np.ndarr
     return hands
 
 
+def upside_down_hands_from_result(result, width: int, height: int) -> list[np.ndarray]:
+    """Map hands from a 180-degree-rotated frame back to the original space.
+
+    Rotating by 180 degrees maps normalized (x, y) to (1 - x, 1 - y), so the
+    landmarks stay valid for the gauntlet overlay and snap gate.
+    """
+    hands = []
+    for landmarks in result.hand_landmarks:
+        points = np.asarray(
+            [((1 - p.x) * width, (1 - p.y) * height) for p in landmarks], np.float32
+        )
+        if points.shape == (21, 2) and np.isfinite(points).all():
+            hands.append(points)
+    return hands
+
+
 class SnapGesture:
     """A deliberate thumb and middle finger pinch followed by a quick release."""
 

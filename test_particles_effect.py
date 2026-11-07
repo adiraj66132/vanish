@@ -2,7 +2,7 @@ import unittest
 
 import numpy as np
 
-from local_app.particles_effect import PARTICLE_SECONDS, ParticleEffect
+from particles_effect import PARTICLE_SECONDS, ParticleEffect
 
 
 class ParticleEffectTests(unittest.TestCase):

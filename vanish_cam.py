@@ -33,7 +33,7 @@ try:
         TELEPORT_SECONDS,
     )
     from .particles_effect import PARTICLE_SECONDS, ParticleEffect
-    from .infinity_effect import EFFECT_SECONDS as INFINITY_SECONDS, InfinityDust, SnapGesture, hand_landmarks_from_result, overlay_gauntlet
+    from .infinity_effect import EFFECT_SECONDS as INFINITY_SECONDS, InfinityDust, SnapGesture, hand_landmarks_from_result, overlay_gauntlet, upside_down_hands_from_result
     from .naruto_effect import (
         EFFECT_SECONDS, LOG_PATH, joined_hands_from_landmarks, landed_log_anchor,
         load_log, overlay_log, render_substitution, substitution_anchor,
@@ -48,7 +48,7 @@ except ImportError:
         TELEPORT_SECONDS,
     )
     from particles_effect import PARTICLE_SECONDS, ParticleEffect
-    from infinity_effect import EFFECT_SECONDS as INFINITY_SECONDS, InfinityDust, SnapGesture, hand_landmarks_from_result, overlay_gauntlet
+    from infinity_effect import EFFECT_SECONDS as INFINITY_SECONDS, InfinityDust, SnapGesture, hand_landmarks_from_result, overlay_gauntlet, upside_down_hands_from_result
     from naruto_effect import (
         EFFECT_SECONDS, LOG_PATH, joined_hands_from_landmarks, landed_log_anchor,
         load_log, overlay_log, render_substitution, substitution_anchor,
@@ -109,6 +109,10 @@ CALIBRATION_SECONDS = 4.0
 BACKGROUND_SAMPLE_SECONDS = 0.55
 VANISH_SECONDS = 3.6
 GESTURE_INTERVAL_SECONDS = 0.14
+# Hand detection runs on a downscaled frame; landmarks are normalized, so
+# they map back to the full frame exactly. This cuts inference cost on
+# high-resolution webcams without losing detection quality.
+HAND_DETECT_MAX_WIDTH = 640
 
 
 @dataclass
@@ -363,11 +367,24 @@ def open_virtual_camera(args: argparse.Namespace, width: int, height: int):
             backend=args.virtual_backend, device=args.virtual_device,
         )
     except (ImportError, RuntimeError, OSError, ValueError) as error:
+        if platform.system() == "Windows":
+            hint = (
+                "Install OBS Studio (with the OBS Virtual Camera driver) or Unity "
+                "Capture. If using OBS Virtual Camera, stop 'Start Virtual Camera' "
+                "in OBS."
+            )
+        elif platform.system() == "Linux":
+            hint = (
+                "Load the v4l2loopback kernel module (e.g. 'sudo modprobe "
+                "v4l2loopback') and use --virtual-backend v4l2loopback."
+            )
+        else:
+            hint = (
+                "macOS has no supported virtual camera backend; use the preview "
+                "window with OBS Window Capture instead."
+            )
         message = (
-            "Virtual camera unavailable. Install OBS Studio (with the OBS Virtual "
-            "Camera driver) or Unity Capture. If using OBS Virtual Camera, stop "
-            "'Start Virtual Camera' in OBS. Launch through RUN_LOCAL.bat to "
-            "install pyvirtualcam. "
+            "Virtual camera unavailable. " + hint + " "
             f"Details: {error}"
         )
         if args.virtual_camera is True or args.virtual_backend or args.virtual_device:
@@ -1134,10 +1151,29 @@ def run_camera(args: argparse.Namespace, resources: ExitStack, mode: str, licens
                     and state.phase in ("ready", "infinity_countdown")
                     and now - state.last_gesture_check >= 0.08):
                 state.last_gesture_check = now
-                rgb = cv2.cvtColor(camera_frame, cv2.COLOR_BGR2RGB)
+                det_frame = camera_frame
+                if width > HAND_DETECT_MAX_WIDTH:
+                    det_frame = cv2.resize(
+                        camera_frame,
+                        (HAND_DETECT_MAX_WIDTH,
+                         max(1, round(height * HAND_DETECT_MAX_WIDTH / width))),
+                        interpolation=cv2.INTER_AREA,
+                    )
+                rgb = cv2.cvtColor(det_frame, cv2.COLOR_BGR2RGB)
                 mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb)
                 result = recognizer.primary.detect_for_video(mp_image, elapsed_ms)
                 infinity_hands = hand_landmarks_from_result(result, width, height)
+                # A hand held toward the camera (typical when snapping) often
+                # appears upside down. Retry one upside-down view when nothing
+                # was found, throttled so it cannot dominate the frame budget.
+                if not infinity_hands and elapsed_ms >= recognizer.next_retry_ms:
+                    rotated = mp.Image(
+                        image_format=mp.ImageFormat.SRGB,
+                        data=np.ascontiguousarray(np.rot90(rgb, 2)),
+                    )
+                    retro = recognizer.alternate.detect(rotated)
+                    infinity_hands = upside_down_hands_from_result(retro, width, height)
+                    recognizer.next_retry_ms = elapsed_ms + 200
                 snapped = (infinity_gate.update(infinity_hands, now, width)
                            if state.phase == "ready" else False)
                 if args.gesture_debug and now - last_gesture_report >= 1.0:
@@ -1193,9 +1229,10 @@ def run_camera(args: argparse.Namespace, resources: ExitStack, mode: str, licens
                 age = max(0.0, time.perf_counter() - state.vanish_started)
                 display = overlay_gauntlet(camera_frame, infinity_hands)
                 if age >= 3.0:
-                    if mp_image is None:
-                        rgb = cv2.cvtColor(camera_frame, cv2.COLOR_BGR2RGB)
-                        mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb)
+                    # Always mask the fresh full frame: the gesture frame is
+                    # downscaled for hand detection and too small for the dust.
+                    rgb = cv2.cvtColor(camera_frame, cv2.COLOR_BGR2RGB)
+                    mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb)
                     mask = person_mask(segmenter, mp_image, elapsed_ms, width, height)
                     infinity_effect = InfinityDust(camera_frame, mask)
                     state.phase = "infinity_vanishing"
@@ -1387,8 +1424,8 @@ def main() -> int:
     try:
         if any(flag in sys.argv[1:] for flag in ("--self-test", "--help", "-h")):
             return run()  # Model/resource checks only; never opens a camera.
-        if not getattr(sys, "frozen", False):
-            print("[Webcam] Running locally from Python: no online license check.")
+        if not getattr(sys, "frozen", False) or platform.system() != "Windows":
+            print("[Webcam] No online license check on this run.")
             return run()
         session = activate_license()
         if session is None:
