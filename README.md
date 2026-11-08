@@ -1,5 +1,8 @@
 # VanishCam
+
+<div align="center">
 <img width="200" height="200" alt="vanishcam_minimal_logo" src="https://github.com/user-attachments/assets/daa06215-cb7e-4ae5-97c3-77ad3b2458b5" />
+</div>
 
 VanishCam adds animated disappearance effects to a live webcam feed. Webcam
 frames are processed on your computer and are not recorded or uploaded by this
