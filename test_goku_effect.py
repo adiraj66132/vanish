@@ -5,7 +5,7 @@ import numpy as np
 import mediapipe as mp
 
 from goku_effect import (
-    GokuGestureGate, GokuPoseRecognizer, GokuTeleport, HOLD_SECONDS, TELEPORT_SECONDS,
+    GokuGestureGate, GokuPoseRecognizer, GokuTeleport, TELEPORT_SECONDS,
     fingers_on_forehead,
 )
 
@@ -97,6 +97,9 @@ class GokuPoseTests(unittest.TestCase):
 
 
 class GokuTimingTests(unittest.TestCase):
+    def test_default_hold_is_three_seconds(self):
+        self.assertEqual(GokuGestureGate().hold_seconds, 3.0)
+
     def test_positive_decimal_hold_times_and_reset(self):
         for duration in (0.1,0.5,1.5):
             gate=GokuGestureGate(hold_seconds=duration)
@@ -114,19 +117,19 @@ class GokuTimingTests(unittest.TestCase):
                 GokuGestureGate(hold_seconds=duration)
 
     def test_one_second_and_release_required_for_reappearance(self):
-        gate = GokuGestureGate()
+        gate = GokuGestureGate(hold_seconds=1.0)
         for index in range(10):
             self.assertFalse(gate.update(True, 10.0 + index * 0.1))
-        self.assertTrue(gate.update(True, 10.0 + HOLD_SECONDS))
+        self.assertTrue(gate.update(True, 11.0))
         self.assertFalse(gate.update(True, 20.0))  # Holding cannot retrigger.
         self.assertFalse(gate.update(False, 20.1))
         self.assertFalse(gate.update(False, 20.5))
         for index in range(10):
             self.assertFalse(gate.update(True, 21.0 + index * 0.1))
-        self.assertTrue(gate.update(True, 21.0 + HOLD_SECONDS))
+        self.assertTrue(gate.update(True, 22.0))
 
     def test_breaking_pose_resets_countdown(self):
-        gate = GokuGestureGate()
+        gate = GokuGestureGate(hold_seconds=1.0)
         gate.update(True, 1.0)
         gate.update(False, 2.0)
         gate.update(False, 2.3)
@@ -135,7 +138,7 @@ class GokuTimingTests(unittest.TestCase):
         self.assertTrue(gate.update(True, 4.0))
 
     def test_single_tracking_miss_does_not_erase_a_real_hold(self):
-        gate = GokuGestureGate()
+        gate = GokuGestureGate(hold_seconds=1.0)
         gate.update(True, 1.0)
         gate.update(True, 1.1)
         gate.update(False, 1.2)

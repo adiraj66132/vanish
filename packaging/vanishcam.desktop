@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=VanishCam
+Comment=Animated webcam disappearance effects
+Exec=VanishCam
+Icon=vanishcam
+Categories=AudioVideo;Video;
+StartupWMClass=VanishCam
+Terminal=false

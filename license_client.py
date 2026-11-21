@@ -446,7 +446,7 @@ def _email_dialog(auth: DeviceAuth, config: dict, fingerprint: str):
     return result
 
 
-def activate_license():
+def activate_license(dialog=None):
     config = load_config()
     store = ProtectedStore(config["projectId"])
     instance = LocalInstance(store.path)
@@ -463,7 +463,7 @@ def activate_license():
             except LicenseError:
                 pass  # Show the email form so a typo/account can be corrected.
         if result is None:
-            result = _email_dialog(auth, config, fingerprint)
+            result = (dialog or _email_dialog)(auth, config, fingerprint)
         if result is None:
             instance.close()
             return None

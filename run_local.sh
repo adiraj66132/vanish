@@ -13,11 +13,11 @@ if [[ ! -x "$VENV_PY" ]]; then
   "$PYTHON" -m venv "$VENV_DIR" || exit 1
 fi
 
-if ! "$VENV_PY" -c "import cv2, mediapipe, numpy, pyvirtualcam" >/dev/null 2>&1; then
+if ! "$VENV_PY" -c "import cv2, mediapipe, numpy, pyvirtualcam, PySide6" >/dev/null 2>&1; then
   echo "[Vanish Lab] Installing required packages. Internet is only needed this time..."
   "$VENV_PY" -m pip install --upgrade pip || exit 1
   "$VENV_PY" -m pip install -r requirements.txt || exit 1
 fi
 
-echo "[Vanish Lab] Starting the webcam..."
-exec "$VENV_PY" vanish_cam.py "$@"
+echo "[Vanish Lab] Starting the desktop app..."
+exec "$VENV_PY" desktop.py "$@"

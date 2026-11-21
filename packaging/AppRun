@@ -1,0 +1,4 @@
+#!/bin/sh
+# AppImage entry point: resolve symlinks so the bundle can run from anywhere.
+HERE="$(dirname "$(readlink -f "$0")")"
+exec "$HERE/usr/bin/VanishCam" "$@"

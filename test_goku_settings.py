@@ -10,8 +10,84 @@ import vanish_cam as app
 
 
 class SettingsTests(unittest.TestCase):
+    def test_default_hold_counts_down_three_two_one(self):
+        times = iter((0.0, 4.1) + tuple(4.2 + 0.2 * i for i in range(16)))
+        clock = [0.0]
+        frame = np.full((80, 120, 3), 100, np.uint8)
+        capture = Mock()
+        def read():
+            clock[0] = next(times)
+            return True, frame.copy()
+        capture.read.side_effect = read
+        recognizer = Mock()
+        recognizer.recognize_pose.return_value = True
+        args = SimpleNamespace(camera=0, width=120, height=80, fps=30, fullscreen=False,
+                               no_mirror=True, gesture_debug=False)
+        printed = []
+        commands = iter([None] * 17 + ["quit"])
+        with ExitStack() as stack:
+            stack.enter_context(patch('builtins.print', side_effect=lambda *a, **k: printed.append(str(a[0]) if a else '')))
+            stack.enter_context(patch.object(app, 'download_models'))
+            stack.enter_context(patch.object(app, 'open_camera', return_value=capture))
+            stack.enter_context(patch.object(app, 'create_tasks', return_value=(Mock(), recognizer)))
+            stack.enter_context(patch.object(app, 'open_virtual_camera', return_value=None))
+            stack.enter_context(patch.object(app, 'VanishSound', return_value=Mock()))
+            stack.enter_context(patch.object(app, 'person_mask', return_value=np.ones((80, 120), np.float32)))
+            stack.enter_context(patch.object(app.time, 'perf_counter', side_effect=lambda: clock[0]))
+            for name in ('namedWindow', 'resizeWindow', 'destroyAllWindows', 'imshow'):
+                stack.enter_context(patch.object(app.cv2, name))
+            stack.enter_context(patch.object(app.cv2, 'waitKey', return_value=0))
+            with ExitStack() as resources:
+                self.assertEqual(app.run_camera(
+                    args, resources, 'goku', poll_command=lambda: next(commands, None)), 0)
+        messages = [line for line in printed if line.startswith("[Goku] Disappearing in ")]
+        self.assertEqual(messages, [
+            "[Goku] Disappearing in 3...",
+            "[Goku] Disappearing in 2...",
+            "[Goku] Disappearing in 1...",
+        ])
+
+    def test_reappear_command_restarts_the_goku_animation(self):
+        times = iter((0.0, 4.1, 4.2, 4.4, 4.6, 4.8, 5.0, 5.2, 5.45, 5.5, 5.7, 5.9))
+        clock = [0.0]
+        frame = np.full((80, 120, 3), 100, np.uint8)
+        capture = Mock()
+        def read():
+            clock[0] = next(times)
+            return True, frame.copy()
+        capture.read.side_effect = read
+        recognizer = Mock()
+        recognizer.recognize_pose.side_effect = lambda image, ms: clock[0] in (4.2, 4.4, 4.6, 4.8, 5.0, 5.2)
+        sound = Mock()
+        commands = iter([None] * 9 + ["reappear", None, "quit"])
+        args = SimpleNamespace(camera=0, width=120, height=80, fps=30, fullscreen=False,
+                               no_mirror=True, gesture_debug=False, goku_delay=1.0)
+        printed = []
+        with ExitStack() as stack:
+            stack.enter_context(patch('builtins.print', side_effect=lambda *a, **k: printed.append(str(a[0]) if a else '')))
+            stack.enter_context(patch.object(app, 'download_models'))
+            stack.enter_context(patch.object(app, 'open_camera', return_value=capture))
+            stack.enter_context(patch.object(app, 'create_tasks', return_value=(Mock(), recognizer)))
+            stack.enter_context(patch.object(app, 'open_virtual_camera', return_value=None))
+            stack.enter_context(patch.object(app, 'VanishSound', return_value=sound))
+            stack.enter_context(patch.object(app, 'person_mask', return_value=np.ones((80, 120), np.float32)))
+            stack.enter_context(patch.object(app.time, 'perf_counter', side_effect=lambda: clock[0]))
+            for name in ('namedWindow', 'resizeWindow', 'destroyAllWindows', 'imshow'):
+                stack.enter_context(patch.object(app.cv2, name))
+            stack.enter_context(patch.object(app.cv2, 'waitKey', return_value=0))
+            with ExitStack() as resources:
+                self.assertEqual(app.run_camera(
+                    args, resources, 'goku', poll_command=lambda: next(commands, None)), 0)
+        self.assertEqual(sound.play.call_count, 2, printed)
+        self.assertTrue(any('Reappearing!' in line for line in printed))
+
+    def test_countdown_logging_is_rate_limited_when_pose_flickers(self):
+        self.assertTrue(app.should_log_countdown(1, None, 1.0, float("-inf")))
+        self.assertFalse(app.should_log_countdown(1, 1, 1.1, 1.0))
+        self.assertTrue(app.should_log_countdown(1, None, 2.0, 1.0))
+
     def test_parse_default_positive_decimals_and_decimal_comma(self):
-        for text,expected in (('',1),('1',1),('0.5',.5),('0.1',.1),(' 0,5 ',.5),('.1',.1),('2.5',2.5)):
+        for text,expected in (('',3),('3',3),('1',1),('0.5',.5),('0.1',.1),(' 0,5 ',.5),('.1',.1),('2.5',2.5)):
             self.assertEqual(settings.parse_goku_delay(text),expected)
         for text in ('0','-1','nan','inf','1.2.3','abc'):
             with self.assertRaises(ValueError):
@@ -26,7 +102,7 @@ class SettingsTests(unittest.TestCase):
             return settings.choose_goku_delay(check_license=check)
 
     def test_keyboard_default_and_fractional_entry_replace_default(self):
-        self.assertEqual(self.dialog([13]),1)
+        self.assertEqual(self.dialog([13]),3)
         for text in ('0.5','0.1','0,5','.5'):
             self.assertEqual(self.dialog([*map(ord,text),13]),float(text.replace(',','.')))
 

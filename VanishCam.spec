@@ -1,4 +1,4 @@
-"""Build the complete VanishCam and three focused editions (Windows EXEs; Linux/macOS binaries)."""
+"""PyInstaller spec for the single-binary VanishCam desktop app (onedir)."""
 
 from pathlib import Path
 import platform
@@ -9,80 +9,66 @@ from PyInstaller.utils.hooks import collect_dynamic_libs
 root = Path(SPECPATH).resolve()
 is_windows = platform.system() == "Windows"
 icon_file = root / "assets" / "vanish_icon.ico" if is_windows else None
-segmenter = (root / "models" / "selfie_segmenter_landscape.tflite", "models")
-license_config = (root / "license_config.json", ".")
-editions = (
-    (
-        "full", "VanishCam",
-        (
-            (root / "hand_landmarker.task", "."),
-            (root / "models" / "gesture_recognizer.task", "models"),
-            (root / "models" / "blaze_face_short_range.tflite", "models"),
-            (root / "assets" / "substitution_log.png", "assets"),
-            (root / "assets" / "vanish.MP3", "assets"),
-            (root / "assets" / "teleport.MP3", "assets"),
-            (root / "assets" / "itachi_crow_sheet.png", "assets"),
-            (root / "assets" / "sharingan.png", "assets"),
-        ),
-    ),
-    (
-        "naruto", "Naruto Vanish Effect",
-        (
-            (root / "hand_landmarker.task", "."),
-            (root / "assets" / "substitution_log.png", "assets"),
-            (root / "assets" / "vanish.MP3", "assets"),
-        ),
-    ),
-    (
-        "goku", "Goku Vanish Effect",
-        (
-            (root / "hand_landmarker.task", "."),
-            (root / "models" / "blaze_face_short_range.tflite", "models"),
-            (root / "assets" / "teleport.MP3", "assets"),
-        ),
-    ),
-    (
-        "normal_particles", "Normal and Particles Vanish",
-        ((root / "models" / "gesture_recognizer.task", "models"),),
-    ),
-)
+version_file = root / "build" / "version_info.txt"
 
-all_resources = [
-    path for edition, _, extras in editions
-    for path, _ in (segmenter, *extras, (root / "editions" / edition / "edition.txt", "."))
+resources = [
+    (root / "models" / "selfie_segmenter_landscape.tflite", "models"),
+    (root / "models" / "gesture_recognizer.task", "models"),
+    (root / "models" / "blaze_face_short_range.tflite", "models"),
+    (root / "hand_landmarker.task", "."),
+    (root / "assets" / "substitution_log.png", "assets"),
+    (root / "assets" / "vanish.MP3", "assets"),
+    (root / "assets" / "teleport.MP3", "assets"),
+    (root / "assets" / "itachi_crow_sheet.png", "assets"),
+    (root / "assets" / "sharingan.png", "assets"),
+    (root / "license_config.json", "."),
 ]
-missing = [str(path) for path in (icon_file, license_config[0], *all_resources) if path is not None and not path.is_file()]
+missing = [str(path) for path, _ in resources if not path.is_file()]
 if missing:
-    raise SystemExit("File necessari alla build mancanti:\n" + "\n".join(missing))
+    raise SystemExit("Missing build resources:\n" + "\n".join(missing))
 
-mediapipe_binaries = collect_dynamic_libs("mediapipe")
-executables = []
-for edition, name, extras in editions:
-    resources = (segmenter, license_config, *extras, (root / "editions" / edition / "edition.txt", "."))
-    analysis = Analysis(
-        [str(root / "vanish_cam.py")],
-        pathex=[str(root)],
-        binaries=mediapipe_binaries,
-        datas=[(str(path), destination) for path, destination in resources],
-        hiddenimports=["pygame.mixer", "mediapipe.tasks.c"],
-        hookspath=[],
-        hooksconfig={},
-        runtime_hooks=[],
-        excludes=[],
-        noarchive=False,
-    )
-    archive = PYZ(analysis.pure)
-    executables.append(EXE(
-        archive,
-        analysis.scripts,
-        analysis.binaries,
-        analysis.datas,
-        [],
-        name=name,
-        debug=False,
-        bootloader_ignore_signals=False,
-        strip=False,
-        upx=False,
-        console=True,
-        icon=icon_file,
-    ))
+excludes = [
+    "PySide6.QtWebEngineCore", "PySide6.QtWebEngineWidgets",
+    "PySide6.QtQml", "PySide6.QtQuick", "PySide6.QtQuick3D",
+    "PySide6.Qt3DCore", "PySide6.QtCharts", "PySide6.QtDataVisualization",
+    "PySide6.QtMultimedia", "PySide6.QtBluetooth", "PySide6.QtNfc",
+    "PySide6.QtSerialPort", "PySide6.QtSql", "PySide6.QtTest",
+    "PySide6.QtDesigner", "PySide6.QtPdf", "PySide6.QtPdfWidgets",
+]
+
+analysis = Analysis(
+    [str(root / "desktop.py")],
+    pathex=[str(root)],
+    binaries=collect_dynamic_libs("mediapipe"),
+    datas=[(str(path), destination) for path, destination in resources],
+    hiddenimports=["pygame.mixer", "mediapipe.tasks.c", "PySide6.QtNetwork"],
+    hookspath=[],
+    hooksconfig={},
+    runtime_hooks=[],
+    excludes=excludes,
+    noarchive=False,
+)
+archive = PYZ(analysis.pure)
+exe = EXE(
+    archive,
+    analysis.scripts,
+    [],
+    exclude_binaries=True,
+    name="VanishCam",
+    debug=False,
+    bootloader_ignore_signals=False,
+    strip=False,
+    upx=False,
+    console=False,
+    icon=icon_file,
+    version=str(version_file) if is_windows and version_file.is_file() else None,
+)
+coll = COLLECT(
+    exe,
+    analysis.binaries,
+    analysis.datas,
+    strip=False,
+    upx=False,
+    upx_exclude=[],
+    name="VanishCam",
+)

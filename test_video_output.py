@@ -269,7 +269,7 @@ class VideoLoopTests(unittest.TestCase):
         displayed = []
         keys = [0] * len(times)
         keys[2] = ord("v")  # Manual activation is forbidden in Goku mode.
-        keys[14] = ord("r")  # Manual return is forbidden too.
+        keys[14] = 0  # Gesture-only return in this scenario; see test_goku_settings.
         keys[-1] = ord("q")
         with ExitStack() as mocks:
             mocks.enter_context(patch.object(app, "download_models"))
@@ -286,7 +286,7 @@ class VideoLoopTests(unittest.TestCase):
             mocks.enter_context(patch.object(app.cv2, "waitKey", side_effect=keys))
             printed = mocks.enter_context(patch("builtins.print"))
             with ExitStack() as resources:
-                self.assertEqual(app.run_camera(arguments(mode="goku"), resources, "goku"), 0)
+                self.assertEqual(app.run_camera(arguments(mode="goku", goku_delay=1.0), resources, "goku"), 0)
 
         self.assertEqual(masks.call_count, 2)
         sound_factory.assert_called_once_with(app.TELEPORT_SOUND_PATH)

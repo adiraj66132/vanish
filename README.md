@@ -5,6 +5,11 @@
 <img width="200" height="200" alt="vanishcam_minimal_logo" src="https://github.com/user-attachments/assets/daa06215-cb7e-4ae5-97c3-77ad3b2458b5" />
 </div>
 
+> [!WARNING]
+> **Under construction** — this release contains the desktop-app rewrite: a Qt
+> launcher and preview window, one packaged binary instead of four editions,
+> persisted settings, and installers. It is still being tested and may change.
+
 VanishCam adds animated disappearance effects to a live webcam feed. Webcam
 frames are processed on your computer and are not recorded or uploaded by this
 app. Packaged builds also check licenses online; see [Privacy and network use](#privacy-and-network-use).
@@ -23,47 +28,45 @@ the effects.
 
 ## Install and start
 
-Open PowerShell in the project folder and run:
+**Windows:** download `VanishCamSetup.exe` from the releases page and run it.
+The installer installs per user (no administrator rights needed), adds a Start
+menu entry and an optional desktop icon, and includes an uninstaller. Launch
+**VanishCam** from the Start menu. No Python installation is required.
+
+**Linux:** download `VanishCam.AppImage`, make it executable and run it:
+
+```bash
+chmod +x VanishCam.AppImage
+./VanishCam.AppImage
+```
+
+If AppImage is unavailable, use the `VanishCam.AppDir` folder in the release
+archive and run its `AppRun` script. For virtual camera output, load
+v4l2loopback first (`sudo modprobe v4l2loopback`). Without it, use the preview
+window with an OBS Window Capture source.
+
+**From source (development):**
 
 ```powershell
 py -3 -m venv .venv
-.\.venv\Scripts\python.exe -m pip install --upgrade pip
 .\.venv\Scripts\python.exe -m pip install -r requirements.txt
-.\.venv\Scripts\python.exe vanish_cam.py
+.\.venv\Scripts\python.exe desktop.py
 ```
 
-If `py` is not available, use `python` in its place. Choose an effect from the
-menu, then select your webcam in the preview and press **Use this webcam** or
-`Enter`. By default, VanishCam picks the highest common resolution supported by
-the camera, while keeping the image's original proportions.
+On Linux/macOS, `./run_local.sh` does the same setup and starts the desktop app.
+Source runs never perform an online license check.
 
-On Linux or macOS, run from a terminal in the project folder instead:
-
-```bash
-./run_local.sh
-```
-
-`run_local.sh` creates a Python virtual environment and installs dependencies on
-first use, then starts the app. Source runs never perform an online license
-check.
+The launcher remembers your settings. Pick an effect, check the camera preview,
+then click **Start effect**. Resolution defaults to the highest common size
+supported by the camera while keeping its aspect ratio. The effect window has
+buttons for recapturing the background, reappearing, vanishing, fullscreen and
+quitting; the same shortcuts work from the keyboard.
 
 Before the effect starts, step completely out of view for about four seconds
-while VanishCam captures the empty room. Return to the frame after the console
-says the background is ready. Capture a new background with `Space` if the
-camera or room has moved.
+while VanishCam captures the empty room. Return when the status line says the
+background was captured. Press `Space` to recapture if the camera or room moves.
 
-To start a particular effect without the menu, pass its mode name:
-
-```powershell
-.\.venv\Scripts\python.exe vanish_cam.py --mode normal
-.\.venv\Scripts\python.exe vanish_cam.py --mode naruto
-.\.venv\Scripts\python.exe vanish_cam.py --mode particles
-.\.venv\Scripts\python.exe vanish_cam.py --mode goku
-.\.venv\Scripts\python.exe vanish_cam.py --mode itachi
-.\.venv\Scripts\python.exe vanish_cam.py --mode infinity
-```
-
-For example, to run Goku mode without virtual camera output:
+For scripted use, `vanish_cam.py` keeps its command-line interface:
 
 ```powershell
 .\.venv\Scripts\python.exe vanish_cam.py --mode goku --no-virtual-camera
@@ -79,7 +82,7 @@ For example, to run Goku mode without virtual camera output:
 - **Particles:** Make the V sign. Your silhouette breaks into drifting colored
   fragments. Press `R` to return.
 - **Goku:** Hold your straight, joined index and middle fingers against your
-  forehead. The default hold time is one second; the app asks for a different
+  forehead. The default hold time is three seconds; the app asks for a different
   duration when this mode starts. Repeat the gesture to reappear.
 - **Itachi:** Touch both hands together in front of your chest. Your silhouette
   turns into crows. Touch your hands together again to return.
@@ -93,7 +96,7 @@ modes, the gesture controls the effect; the `V` shortcut is disabled.
 
 ## Keyboard controls
 
-Click the preview window first so it receives keyboard input.
+The effect window has matching buttons; shortcuts work while it has focus.
 
 | Key | Action |
 | --- | --- |
@@ -160,11 +163,13 @@ output. Pass the same options after the script name, for example:
 ./run_local.sh --mode infinity
 ```
 
-To build the Windows executables, install Python and run `BUILD_WINDOWS.bat`.
-On Linux/macOS, run `./build_unix.sh`. Both create a build environment, check
-the MediaPipe models, and self-test the packaged apps. The generated files are
-placed in `dist\` (Windows) or `dist/` (Linux/macOS). Packaged builds on Linux
-and macOS skip license checks; only Windows editions activate a license.
+To build the desktop app, install Python and run `BUILD_WINDOWS.bat` on Windows
+or `./build_unix.sh` on Linux/macOS. Both create a build environment, check the
+MediaPipe models, run the unit tests and self-test the packaged app. The output
+is a single onedir application in `dist/VanishCam` (Windows:
+`dist\VanishCam\VanishCam.exe`), plus `VanishCamSetup.exe` when Inno Setup is
+installed and an AppImage/AppDir on Linux. Packaged builds on Linux and macOS
+skip license checks; only the Windows build activates a license.
 
 ## Troubleshooting
 
@@ -188,7 +193,7 @@ and macOS skip license checks; only Windows editions activate a license.
 The effects process the live camera feed locally. VanishCam does not send
 webcam frames or captured backgrounds to its license service. The Python source
 run directly with Python does not require an online license check. Packaged
-Windows editions use Firebase for license activation and session checks; these
+Windows builds use Firebase for license activation and session checks; these
 checks send the license email, an anonymous account identifier, a hashed device
 identifier, and session information. Packaged builds on Linux and macOS skip
 license checks entirely. Package installation may also contact

@@ -5,9 +5,11 @@ import math
 import cv2
 import numpy as np
 
+from goku_effect import HOLD_SECONDS
+
 
 def parse_goku_delay(text: str) -> float:
-    value = float(text.strip().replace(',', '.') or '1')
+    value = float(text.strip().replace(',', '.') or f"{HOLD_SECONDS:g}")
     if not math.isfinite(value) or value <= 0:
         raise ValueError('Enter a number greater than zero.')
     return value
@@ -15,7 +17,7 @@ def parse_goku_delay(text: str) -> float:
 
 def choose_goku_delay(check_license=None) -> float | None:
     title = 'Goku - Gesture Duration'
-    text, selected, error = '1', True, ''
+    text, selected, error = f'{HOLD_SECONDS:g}', True, ''
     action = [None]
 
     def on_mouse(event, x, y, flags, userdata):
@@ -38,7 +40,7 @@ def choose_goku_delay(check_license=None) -> float | None:
             label('How long should you hold the gesture to disappear or reappear?',(50,103),.48)
             cv2.rectangle(window,(50,130),(670,200),(48,54,62),-1)
             cv2.rectangle(window,(50,130),(670,200),(111,180,195) if selected else (111,142,153),2)
-            label(text or '1 (default)',(70,177),.9)
+            label(text or f'{HOLD_SECONDS:g} (default)',(70,177),.9)
             label('seconds',(540,175),.6)
             label('Examples: 0.1, 0.5, 1, 2  |  Enter to confirm',(50,233),.52)
             label('The same duration applies to disappearing and reappearing.',(50,258),.46,(179,195,201))

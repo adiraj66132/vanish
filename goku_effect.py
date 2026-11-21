@@ -11,7 +11,7 @@ import mediapipe as mp
 import numpy as np
 
 
-HOLD_SECONDS = 1.0
+HOLD_SECONDS = 3.0
 TELEPORT_SECONDS = 0.25
 SNAP_SECONDS = 0.045
 TRACKING_GRACE_SECONDS = 0.25
