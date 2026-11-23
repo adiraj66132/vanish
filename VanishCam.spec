@@ -2,20 +2,27 @@
 
 from pathlib import Path
 import platform
+import sys
 
 from PyInstaller.utils.hooks import collect_dynamic_libs
 
 
 root = Path(SPECPATH).resolve()
+sys.path.insert(0, str(root))
+
+# Model resolution must match the app: downloaded models live in the user data
+# directory, not necessarily in the repository's models/ folder.
+from app_config import model_path  # noqa: E402
+
 is_windows = platform.system() == "Windows"
 icon_file = root / "assets" / "vanish_icon.ico" if is_windows else None
 version_file = root / "build" / "version_info.txt"
 
 resources = [
-    (root / "models" / "selfie_segmenter_landscape.tflite", "models"),
-    (root / "models" / "gesture_recognizer.task", "models"),
-    (root / "models" / "blaze_face_short_range.tflite", "models"),
-    (root / "hand_landmarker.task", "."),
+    (model_path("selfie_segmenter_landscape.tflite"), "models"),
+    (model_path("gesture_recognizer.task"), "models"),
+    (model_path("blaze_face_short_range.tflite"), "models"),
+    (model_path("hand_landmarker.task"), "."),
     (root / "assets" / "substitution_log.png", "assets"),
     (root / "assets" / "vanish.MP3", "assets"),
     (root / "assets" / "teleport.MP3", "assets"),

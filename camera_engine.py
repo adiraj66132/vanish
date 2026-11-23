@@ -20,6 +20,7 @@ class CameraEngine:
         self._lock = threading.Lock()
         self._frame = None
         self._status = "Starting..."
+        self._calibration = (False, 0)
         self._error = None
         self._finished = False
         self._thread = None
@@ -35,6 +36,7 @@ class CameraEngine:
                     self.args, resources, self.mode, self.license_session,
                     on_frame=self._publish,
                     on_status=self._status_message,
+                    on_calibration=self._calibration_message,
                     poll_command=self._poll_command,
                     on_fullscreen=lambda enabled: None,
                 )
@@ -52,6 +54,15 @@ class CameraEngine:
     def _status_message(self, message: str) -> None:
         with self._lock:
             self._status = message
+
+    def _calibration_message(self, active: bool, remaining: int) -> None:
+        with self._lock:
+            self._calibration = (bool(active), int(remaining))
+
+    def calibration(self) -> tuple[bool, int]:
+        """Return (is_calibrating, seconds_remaining) for the preview overlay."""
+        with self._lock:
+            return self._calibration
 
     def _poll_command(self):
         try:

@@ -51,9 +51,12 @@ class DesktopTests(unittest.TestCase):
             def stop(self): pass
             def join(self): pass
             def snapshot(self): return None, "", None, False
+            def calibration(self): return True, 3
             def command(self, name): pass
 
         window = desktop_ui.PreviewWindow(FakeEngine(), lambda: None, mode="goku")
+        window._poll()
+        self.assertIn("STEP OUT OF FRAME", window.video.calibration_text)
         buttons = {button.text(): button for button in window.findChildren(QPushButton)}
         self.assertFalse(buttons["Vanish"].isEnabled())
         self.assertTrue(buttons["Reappear"].isEnabled())

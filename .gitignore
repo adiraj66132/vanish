@@ -9,6 +9,7 @@ __pycache__/
 !/models/blaze_face_short_range.tflite
 *.part
 /build/
+/installer/version.iss
 /dist/*
 *.exe
 

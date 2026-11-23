@@ -2,7 +2,7 @@
 
 [Setup]
 AppName=VanishCam
-AppVersion=#AppVersion
+AppVersion={#AppVersion}
 AppPublisher=Vanish Lab
 DefaultDirName={localappdata}\Programs\VanishCam
 DefaultGroupName=VanishCam

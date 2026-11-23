@@ -1,6 +1,13 @@
 """Write PyInstaller's Windows VERSIONINFO resource from app_config.__version__."""
 
 from pathlib import Path
+import sys
+
+# Running this script as `packaging/write_version.py` puts packaging/ (not the
+# project root) on sys.path, so make the root importable explicitly.
+ROOT = Path(__file__).resolve().parent.parent
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
 from app_config import __version__
 
@@ -22,11 +29,12 @@ def main() -> None:
         "  ])]), VarFileInfo([VarStruct('Translation', [1033, 1252])])]\n"
         ")\n"
     )
-    path = Path("build/version_info.txt")
+    path = ROOT / "build" / "version_info.txt"
     path.parent.mkdir(exist_ok=True)
     path.write_text(text, encoding="utf-8")
-    Path("installer/version.iss").parent.mkdir(exist_ok=True)
-    Path("installer/version.iss").write_text(
+    version_iss = ROOT / "installer" / "version.iss"
+    version_iss.parent.mkdir(exist_ok=True)
+    version_iss.write_text(
         f'#define AppVersion "{__version__}"\n', encoding="utf-8"
     )
 

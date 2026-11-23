@@ -17,60 +17,119 @@ app. Packaged builds also check licenses online; see [Privacy and network use](#
 ## Requirements
 
 - Windows 10/11, Linux, or macOS (Intel or Apple silicon) and a working webcam
-- Python 3.10 or newer
-- Internet access the first time you install the Python packages
-- Optional: OBS Studio with its Virtual Camera driver, for use in calls or streams
-  (Windows); on Linux, the v4l2loopback kernel module for virtual camera output
+- **Python 3.10–3.13** for source runs and builds. Packaged apps bundle their
+  own runtime, so no Python is needed for them. Python 3.14 is not supported
+  yet: pygame 2.6 has no 3.14 wheel and its source build fails on current
+  setuptools.
+- Internet access the first time dependencies and MediaPipe models are downloaded
+- Optional: OBS Studio with its Virtual Camera driver for calls/streams on
+  Windows, or the `v4l2loopback` kernel module on Linux, for virtual camera output
 
-Keep the camera still and use even lighting so your hands and body are easy to
-see. The app needs a clear view of your room to create the background used by
-the effects.
+Good lighting and a still camera matter more than raw resolution. VanishCam
+captures an empty view of your room as the background first, so keep the area
+behind you uncluttered and free of movement.
 
 ## Install and start
 
-**Windows:** download `VanishCamSetup.exe` from the releases page and run it.
-The installer installs per user (no administrator rights needed), adds a Start
-menu entry and an optional desktop icon, and includes an uninstaller. Launch
-**VanishCam** from the Start menu. No Python installation is required.
+### Windows
 
-**Linux:** download `VanishCam.AppImage`, make it executable and run it:
+Download `VanishCamSetup.exe` from the releases page and run it. The installer
+is per-user (no administrator rights needed), adds a Start menu entry and an
+optional desktop icon, and includes an uninstaller. On first launch, enter the
+email address for your license: packaged Windows builds check it online. No
+Python installation is required.
+
+For a source run, use the launchers from a PowerShell window in the project
+folder — they create `.venv-local`, install dependencies on first run and pick
+the newest installed Python from 3.13 down to 3.10:
+
+```powershell
+.\RUN_LOCAL.bat       # CLI with preview; accepts the options below
+.\RUN_VIRTUAL.bat     # requires OBS Virtual Camera output
+.\RUN_OBS.bat         # preview only, for an OBS Window Capture setup
+```
+
+### Linux / macOS
+
+Download `VanishCam.AppImage`, make it executable and run it:
 
 ```bash
 chmod +x VanishCam.AppImage
 ./VanishCam.AppImage
 ```
 
-If AppImage is unavailable, use the `VanishCam.AppDir` folder in the release
-archive and run its `AppRun` script. For virtual camera output, load
-v4l2loopback first (`sudo modprobe v4l2loopback`). Without it, use the preview
-window with an OBS Window Capture source.
+If an AppImage is unavailable, use the `VanishCam.AppDir` folder from the
+release archive and run its `AppRun` script. Packaged Linux/macOS builds skip
+license checks. For virtual camera output on Linux, load v4l2loopback first
+(`sudo modprobe v4l2loopback`); otherwise use the preview window with an OBS
+Window Capture source.
 
-**From source (development):**
+For a source run, the launchers create `.venv-local` and install dependencies
+on first run:
 
-```powershell
-py -3 -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -r requirements.txt
-.\.venv\Scripts\python.exe desktop.py
+```bash
+./run_local.sh        # Qt desktop app (launcher + preview window)
+./run_virtual.sh      # requires v4l2loopback output
+./run_obs.sh          # preview only, for an OBS Window Capture setup
 ```
 
-On Linux/macOS, `./run_local.sh` does the same setup and starts the desktop app.
+### Manual source setup
+
+Use this if you prefer to manage the environment yourself. Pick any installed
+Python 3.10–3.13:
+
+```powershell
+# Windows (PowerShell) — replace -3.12 with your installed version
+py -3.12 -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+.\.venv\Scripts\python.exe desktop.py          # Qt desktop app
+# or: .\.venv\Scripts\python.exe vanish_cam.py --mode goku   # CLI
+```
+
+```bash
+# Linux / macOS
+python3 -m venv .venv
+.venv/bin/python -m pip install -r requirements.txt
+.venv/bin/python desktop.py                    # Qt desktop app
+# or: .venv/bin/python vanish_cam.py --mode goku           # CLI
+```
+
 Source runs never perform an online license check.
 
-The launcher remembers your settings. Pick an effect, check the camera preview,
-then click **Start effect**. Resolution defaults to the highest common size
-supported by the camera while keeping its aspect ratio. The effect window has
-buttons for recapturing the background, reappearing, vanishing, fullscreen and
-quitting; the same shortcuts work from the keyboard.
+## Getting good results
 
-Before the effect starts, step completely out of view for about four seconds
-while VanishCam captures the empty room. Return when the status line says the
-background was captured. Press `Space` to recapture if the camera or room moves.
+1. **Start the app.** The Qt desktop app remembers your settings: pick an
+   effect, check the camera preview, then click **Start effect**. CLI users
+   select the effect with `--mode` instead. The packaged Windows build asks
+   for your license email once before the launcher opens.
+2. **Step out of frame for about four seconds** while VanishCam captures the
+   empty room. A countdown banner appears on the preview during this step;
+   return when it says the background was captured.
+3. **Perform the gesture** for your effect. Keep your whole hand inside the
+   frame and use even, front-facing light.
+4. **Press `Space` to recapture** the background whenever the camera or room
+   changes — a chair moved, the lights changed, someone walked behind you.
+5. **Press `Q` or `Esc`** to quit and release the camera and virtual device.
 
-For scripted use, `vanish_cam.py` keeps its command-line interface:
+Resolution defaults to the highest common size your camera supports while
+preserving its aspect ratio. If the effect is slow, start at 1280x720 or lower.
+
+For scripted use, `vanish_cam.py` keeps its command-line interface on both
+platforms:
 
 ```powershell
+# Windows
 .\.venv\Scripts\python.exe vanish_cam.py --mode goku --no-virtual-camera
 ```
+
+```bash
+# Linux / macOS
+.venv/bin/python vanish_cam.py --mode goku --no-virtual-camera
+```
+
+The Windows `RUN_*.bat` launchers forward extra arguments to this CLI. The
+Linux/macOS `run_*.sh` launchers start the Qt desktop app, which ignores CLI
+arguments — call `vanish_cam.py` directly when you need flags.
 
 ## Effects and gestures
 
@@ -108,28 +167,28 @@ The effect window has matching buttons; shortcuts work while it has focus.
 
 ## Use with a virtual camera
 
-VanishCam automatically tries to use OBS Virtual Camera when it is available.
-In your call or streaming app, select **OBS Virtual Camera** as the camera.
-Keep VanishCam running while using the effect.
+VanishCam automatically uses OBS Virtual Camera when it is available. In your
+call or streaming app, select **OBS Virtual Camera** as the camera and keep
+VanishCam running.
 
-To require virtual camera output, run:
+- **Windows:** install OBS Studio and click **Start Virtual Camera** in OBS
+  first. Unity Capture is an alternative: `--virtual-backend unitycapture`.
+- **Linux:** load the loopback module and select that backend:
 
-```powershell
-.\.venv\Scripts\python.exe vanish_cam.py --virtual-camera
-```
+  ```bash
+  sudo modprobe v4l2loopback
+  .venv/bin/python vanish_cam.py --virtual-camera --virtual-backend v4l2loopback
+  ```
 
-To use the preview without virtual camera output, add `--no-virtual-camera`.
-When using a Window Capture source in OBS, select the **Webcam Preview** window
-and start OBS Virtual Camera from OBS. Only one app can provide OBS Virtual
-Camera output at a time. Sound effects play through your computer's audio
-output; virtual camera video does not include sound.
+- **macOS:** no virtual camera backend is supported. Run with
+  `--no-virtual-camera` and capture the **Webcam Preview** window with an OBS
+  Window Capture source.
 
-Virtual camera support by OS: on Windows, use OBS Virtual Camera or Unity
-Capture (`--virtual-backend obs` or `--virtual-backend unitycapture`). On
-Linux, load the v4l2loopback kernel module (`sudo modprobe v4l2loopback`) and
-pass `--virtual-backend v4l2loopback`. macOS has no supported virtual camera
-backend; start with `--no-virtual-camera` and capture the **Webcam Preview**
-window with an OBS Window Capture source.
+Use `RUN_VIRTUAL.bat` / `./run_virtual.sh` to require virtual camera output, or
+`RUN_OBS.bat` / `./run_obs.sh` for preview-only operation with an OBS Window
+Capture source (select the **Webcam Preview** window in OBS). Only one app can
+provide virtual camera output at a time. Sound effects play through your
+computer's audio output; virtual camera video does not include sound.
 
 ## Camera options
 
@@ -137,7 +196,13 @@ Choose a specific camera by index, or set a resolution and virtual output frame
 rate. Specify both width and height together. For example:
 
 ```powershell
+# Windows
 .\.venv\Scripts\python.exe vanish_cam.py --camera 1 --width 1280 --height 720 --fps 30
+```
+
+```bash
+# Linux / macOS
+.venv/bin/python vanish_cam.py --camera 1 --width 1280 --height 720 --fps 30
 ```
 
 The preview preserves the camera's aspect ratio instead of stretching the image.
@@ -146,30 +211,48 @@ terminal, not over the video.
 
 ## Launchers and build
 
-Windows: `RUN_LOCAL.bat` starts the local Python version. `RUN_VIRTUAL.bat`
-requires virtual camera output, and `RUN_OBS.bat` starts without direct virtual
-camera output for an OBS Window Capture setup. You can pass the same options
-after the batch file, for example:
+| Platform | Launchers | What they start |
+| --- | --- | --- |
+| Windows | `RUN_LOCAL.bat`, `RUN_VIRTUAL.bat`, `RUN_OBS.bat` | CLI (`vanish_cam.py`) — extra arguments are forwarded |
+| Linux/macOS | `run_local.sh`, `run_virtual.sh`, `run_obs.sh` | Qt desktop app (`desktop.py`) — CLI arguments are ignored |
+
+Every launcher creates `.venv-local`, installs dependencies on first run and
+selects a supported Python automatically. For example, on Windows:
 
 ```powershell
 .\RUN_LOCAL.bat --mode infinity
 ```
 
-Linux/macOS: `./run_local.sh` starts the app, `./run_virtual.sh` requires
-virtual camera output, and `./run_obs.sh` starts without direct virtual camera
-output. Pass the same options after the script name, for example:
+On Linux/macOS, call the CLI directly when you need flags:
 
 ```bash
-./run_local.sh --mode infinity
+.venv/bin/python vanish_cam.py --mode infinity
 ```
 
-To build the desktop app, install Python and run `BUILD_WINDOWS.bat` on Windows
-or `./build_unix.sh` on Linux/macOS. Both create a build environment, check the
-MediaPipe models, run the unit tests and self-test the packaged app. The output
-is a single onedir application in `dist/VanishCam` (Windows:
-`dist\VanishCam\VanishCam.exe`), plus `VanishCamSetup.exe` when Inno Setup is
-installed and an AppImage/AppDir on Linux. Packaged builds on Linux and macOS
-skip license checks; only the Windows build activates a license.
+To build the packaged app, run `BUILD_WINDOWS.bat` on Windows or `./build_unix.sh`
+on Linux/macOS with Python 3.10–3.13 installed:
+
+```powershell
+# Windows
+.\BUILD_WINDOWS.bat
+```
+
+```bash
+# Linux / macOS
+./build_unix.sh
+```
+
+Both scripts create an isolated `.venv-build`, download the MediaPipe models,
+run the unit tests plus a resource self-test, and produce a single onedir app in
+`dist/VanishCam` (Windows: `dist\VanishCam\VanishCam.exe`).
+
+- **Windows:** if Inno Setup is installed and `ISCC` is on your PATH, the build
+  also produces `dist\VanishCamSetup.exe`; otherwise it skips the installer.
+- **Linux:** if `appimagetool` is available it also produces
+  `dist/VanishCam.AppImage`; otherwise the `dist/VanishCam.AppDir` folder is
+  ready to run via its `AppRun` script.
+- Packaged Windows builds activate a license online; packaged Linux/macOS
+  builds skip license checks, as do all source runs.
 
 ## Troubleshooting
 
@@ -179,14 +262,22 @@ skip license checks; only the Windows build activates a license.
   frame, and perform the gesture clearly.
 - **Background looks wrong:** Press `Space`, leave the frame for the full
   capture, and keep the camera still.
-- **Virtual camera unavailable:** On Windows, install the OBS Virtual Camera
-  driver and make sure another app is not already using its output. On Linux,
-  load `v4l2loopback`. On macOS, virtual camera output is not supported; use an
-  OBS Window Capture source instead.
+- **Virtual camera unavailable:** On Windows, install OBS Studio and start its
+  Virtual Camera; make sure no other app is using the output. On Linux, load
+  `v4l2loopback`. On macOS, use an OBS Window Capture source instead.
 - **Video is slow:** Try a smaller resolution, such as `--width 640 --height 360`.
-- **No sound:** If pygame's mixer module is unavailable (some Python 3.14
-  builds ship without it), VanishCam falls back to `ffplay`; install ffmpeg
-  (which provides ffplay), or use Python 3.13 or older for built-in playback.
+- **No sound:** VanishCam falls back to `ffplay` if pygame's mixer is
+  unavailable. Install ffmpeg (which provides ffplay), or use Python 3.10–3.13
+  for built-in playback. Python 3.14 is not supported by pygame 2.6.
+- **Build fails with a pygame wheel error or "No module named distutils":**
+  you are on Python 3.14. Install Python 3.13 or older; the launchers and build
+  scripts will select it automatically.
+- **No installer on Windows:** `ISCC` (the Inno Setup compiler) must be on your
+  PATH. The `dist\VanishCam` application itself is still complete.
+- **Build reports missing MediaPipe models:** rerun the build while online; the
+  models are downloaded to the user data directory on the first build.
+- **AppImage does not start on Linux:** install FUSE (`libfuse2`), or run
+  `dist/VanishCam.AppDir/AppRun` directly.
 
 ## Privacy and network use
 

@@ -11,7 +11,7 @@ import threading
 import cv2
 import numpy as np
 from PySide6.QtCore import QLoggingCategory, Qt, QTimer
-from PySide6.QtGui import QIcon, QImage, QPainter, QPixmap
+from PySide6.QtGui import QColor, QIcon, QImage, QPainter, QPixmap
 from PySide6.QtNetwork import QLocalServer, QLocalSocket
 from PySide6.QtWidgets import (
     QApplication, QCheckBox, QComboBox, QDialog, QDoubleSpinBox, QHBoxLayout,
@@ -103,8 +103,28 @@ class VideoWidget(QWidget):
     def __init__(self):
         super().__init__()
         self.frame = None
+        self.calibration_text = ""
         self.setMinimumSize(320, 240)
         self.setAutoFillBackground(True)
+
+    def set_calibration(self, text: str) -> None:
+        """Show a persistent instruction while the background is captured."""
+        if text != self.calibration_text:
+            self.calibration_text = text
+            self.update()
+
+    def _draw_calibration_banner(self, painter: QPainter) -> None:
+        font = painter.font()
+        font.setPointSize(max(14, font.pointSize() + 8))
+        font.setBold(True)
+        painter.setFont(font)
+        bounds = painter.fontMetrics().boundingRect(self.calibration_text)
+        banner = bounds.adjusted(-20, -14, 20, 14)
+        banner.moveCenter(self.rect().center())
+        painter.setPen(Qt.white)
+        painter.setBrush(QColor(0, 0, 0, 190))
+        painter.drawRoundedRect(banner, 8, 8)
+        painter.drawText(banner, Qt.AlignCenter, self.calibration_text)
 
     def paintEvent(self, event):
         painter = QPainter(self)
@@ -120,6 +140,8 @@ class VideoWidget(QWidget):
         scaled = image.scaled(target.size(), Qt.KeepAspectRatio, Qt.SmoothTransformation)
         painter.drawImage((target.width() - scaled.width()) // 2,
                           (target.height() - scaled.height()) // 2, scaled)
+        if self.calibration_text:
+            self._draw_calibration_banner(painter)
 
 
 class Launcher(QMainWindow):
@@ -282,7 +304,7 @@ class PreviewWindow(QMainWindow):
         self.video = VideoWidget()
         self.setCentralWidget(self.video)
 
-        self.status = QLabel("Starting...")
+        self.status = QLabel("Step out of frame - capturing background...")
         controls = QHBoxLayout()
         controls.addWidget(self.status, 1)
         buttons = {}
@@ -329,6 +351,12 @@ class PreviewWindow(QMainWindow):
             self.video.update()
         if status:
             self.status.setText(status.split("] ", 1)[-1])
+        calibrating, remaining = self.engine.calibration()
+        if calibrating:
+            self.video.set_calibration(
+                f"STEP OUT OF FRAME - capturing background in {remaining}s")
+        else:
+            self.video.set_calibration("")
         if error is not None or finished:
             self._timer.stop()
             self.engine.join()

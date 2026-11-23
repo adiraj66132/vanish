@@ -1011,12 +1011,17 @@ def run(license_session=None) -> int:
 
 
 def run_camera(args: argparse.Namespace, resources: ExitStack, mode: str, license_session=None,
-               *, on_frame=None, on_status=None, poll_command=None, on_fullscreen=None) -> int:
+               *, on_frame=None, on_status=None, on_calibration=None,
+               poll_command=None, on_fullscreen=None) -> int:
     """Process webcam frames. UI hooks are optional so the CLI keeps its own windows."""
     def log(message: str) -> None:
         print(message)
         if on_status is not None:
             on_status(message)
+
+    def calibration(active: bool, remaining: int = 0) -> None:
+        if on_calibration is not None:
+            on_calibration(active, remaining)
 
     download_models(mode)
     capture = open_camera(args.camera, args.width, args.height)
@@ -1078,6 +1083,7 @@ def run_camera(args: argparse.Namespace, resources: ExitStack, mode: str, licens
     last_gesture_report = 0.0
     started = time.perf_counter()
     log("[Webcam] Step out of frame for 4 seconds while I capture the background.")
+    calibration(True, CALIBRATION_SECONDS)
     if mode == "goku":
         log(f"[Webcam] Goku: hold two joined fingers to your forehead for {goku_delay:g} seconds to disappear or reappear. "
               "Release the pose before repeating the gesture.")
@@ -1219,6 +1225,7 @@ def run_camera(args: argparse.Namespace, resources: ExitStack, mode: str, licens
                 remaining = max(0, int(np.ceil(CALIBRATION_SECONDS - elapsed)))
                 if remaining != calibration_remaining:
                     log(f"[Webcam] Capturing background: {remaining} seconds.")
+                    calibration(True, remaining)
                     calibration_remaining = remaining
                 if elapsed >= CALIBRATION_SECONDS - BACKGROUND_SAMPLE_SECONDS:
                     background_samples.append(camera_frame.copy())
@@ -1231,6 +1238,7 @@ def run_camera(args: argparse.Namespace, resources: ExitStack, mode: str, licens
                     background_samples.clear()
                     state.phase = "ready"
                     log("[Webcam] Background captured. You can step back into frame.")
+                    calibration(False, 0)
                 display = camera_frame
 
             elif background is None:
@@ -1372,6 +1380,7 @@ def run_camera(args: argparse.Namespace, resources: ExitStack, mode: str, licens
             if virtual_camera is not None:
                 send_virtual_frame(virtual_camera, display)
             if on_frame is not None:
+                # The Qt shell paints its own calibration banner on the widget.
                 on_frame(display)
             else:
                 cv2.imshow(WINDOW_NAME, display)
@@ -1403,6 +1412,7 @@ def run_camera(args: argparse.Namespace, resources: ExitStack, mode: str, licens
                 background_samples.clear()
                 calibration_remaining = None
                 log("[Webcam] Step out of frame for 4 seconds while I capture the new background.")
+                calibration(True, CALIBRATION_SECONDS)
             elif command == "reappear":
                 if (background is not None and mode == "goku"
                         and state.phase in ("vanished", "goku_vanishing")):

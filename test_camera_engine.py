@@ -11,6 +11,7 @@ class EngineTests(unittest.TestCase):
 
         def fake_run(args, resources, mode, session, **hooks):
             hooks["on_status"]("Capturing background")
+            hooks["on_calibration"](True, 4)
             hooks["on_frame"]("frame")
             seen["command"] = hooks["poll_command"]()
             seen["on_frame"] = hooks["on_frame"]
@@ -23,6 +24,7 @@ class EngineTests(unittest.TestCase):
             engine.join(timeout=2)
 
         self.assertEqual(seen["command"], "recapture")
+        self.assertEqual(engine.calibration(), (True, 4))
         frame, status, error, finished = engine.snapshot()
         self.assertEqual((frame, status, error, finished),
                          ("frame", "Capturing background", None, True))
